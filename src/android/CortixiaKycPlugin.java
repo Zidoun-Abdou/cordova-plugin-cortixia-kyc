@@ -1,5 +1,6 @@
 package dz.cortixia.kyc;
 
+import android.content.Intent;
 import android.content.pm.PackageManager;
 
 import org.apache.cordova.CallbackContext;
@@ -25,9 +26,15 @@ public class CortixiaKycPlugin extends CordovaPlugin {
     public static final String PLUGIN_VERSION = "0.1.0";
     private static final String DEFAULT_BASE_URL = "https://www.e-kyc.online";
 
+    private static final int REQ_MRZ = 5001;
+
     private CortixiaApi api;
     private String apiToken;
     private String baseUrl = DEFAULT_BASE_URL;
+
+    // In-flight guided-flow state (one flow at a time).
+    private CallbackContext pendingCallback;
+    private String pendingDocType;
 
     @Override
     public boolean execute(String action, JSONArray args, CallbackContext callback)
@@ -40,15 +47,63 @@ public class CortixiaKycPlugin extends CordovaPlugin {
                 initialize(args.optJSONObject(0), callback);
                 return true;
             case "scanMrz":
+                scanMrz(args.optString(0, "idcard"), callback);
+                return true;
             case "scanIdCard":
             case "scanPassport":
             case "checkLiveness":
-                // Guided camera/NFC flows — implemented in the next Phase 1/2 steps.
+                // Full composed flows / liveness — next Phase 1/2 steps.
                 callback.error(notImplemented(action));
                 return true;
             default:
                 return false;
         }
+    }
+
+    /** Launch the guided MRZ scanner, then validate the lines server-side. */
+    private void scanMrz(String documentType, CallbackContext callback) {
+        if (api == null) {
+            callback.error(err("not_initialized", "Appelez initialize() avant de scanner."));
+            return;
+        }
+        pendingCallback = callback;
+        pendingDocType = documentType;
+        Intent intent = new Intent(cordova.getActivity(), MrzScanActivity.class);
+        intent.putExtra(MrzScanActivity.EXTRA_DOC_TYPE, documentType);
+        cordova.setActivityResultCallback(this);
+        cordova.getActivity().startActivityForResult(intent, REQ_MRZ);
+    }
+
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode != REQ_MRZ || pendingCallback == null) return;
+        final CallbackContext callback = pendingCallback;
+        pendingCallback = null;
+
+        if (resultCode != android.app.Activity.RESULT_OK || data == null) {
+            String message = data != null ? data.getStringExtra("message") : null;
+            callback.error(err("cancelled",
+                    message != null ? message : "Lecture MRZ annulée."));
+            return;
+        }
+        String[] lines = data.getStringArrayExtra(MrzScanActivity.EXTRA_LINES);
+        if (lines == null || lines.length == 0) {
+            callback.error(err("no_mrz", "Aucune MRZ détectée."));
+            return;
+        }
+        final JSONArray lineArr = new JSONArray();
+        for (String l : lines) lineArr.put(l);
+        final String docType = pendingDocType;
+
+        // Validate server-side off the WebView thread.
+        cordova.getThreadPool().execute(() -> {
+            try {
+                JSONObject result = api.mrz(docType, lineArr, CortixiaApi.newSessionId());
+                callback.success(result);
+            } catch (CortixiaApi.CortixiaException e) {
+                callback.error(e.toJson());
+            }
+        });
     }
 
     private void ping(CallbackContext callback) throws JSONException {

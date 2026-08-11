@@ -44,9 +44,21 @@
             <uses-feature android:name="android.hardware.nfc" android:required="false" />
         </config-file>
 
+        <!-- Guided scanning screens. AppCompat theme (no custom style resource). -->
+        <config-file target="AndroidManifest.xml" parent="/manifest/application">
+            <activity android:name="dz.cortixia.kyc.MrzScanActivity"
+                      android:theme="@style/Theme.AppCompat.NoActionBar"
+                      android:screenOrientation="portrait"
+                      android:exported="false" />
+        </config-file>
+
         <source-file src="src/android/CortixiaKycPlugin.java"
                      target-dir="app/src/main/java/dz/cortixia/kyc" />
         <source-file src="src/android/CortixiaApi.java"
+                     target-dir="app/src/main/java/dz/cortixia/kyc" />
+        <source-file src="src/android/MrzDetector.java"
+                     target-dir="app/src/main/java/dz/cortixia/kyc" />
+        <source-file src="src/android/MrzScanActivity.java"
                      target-dir="app/src/main/java/dz/cortixia/kyc" />
 
         <!-- minSdk 26 (NFC + the eMRTD stack). Applied via the framework gradle below. -->
