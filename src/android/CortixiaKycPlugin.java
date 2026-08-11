@@ -27,6 +27,7 @@ public class CortixiaKycPlugin extends CordovaPlugin {
     private static final String DEFAULT_BASE_URL = "https://www.e-kyc.online";
 
     private static final int REQ_MRZ = 5001;
+    private static final int REQ_LIVENESS = 5002;
 
     private CortixiaApi api;
     private String apiToken;
@@ -49,15 +50,29 @@ public class CortixiaKycPlugin extends CordovaPlugin {
             case "scanMrz":
                 scanMrz(args.optString(0, "idcard"), callback);
                 return true;
+            case "checkLiveness":
+                checkLiveness(callback);
+                return true;
             case "scanIdCard":
             case "scanPassport":
-            case "checkLiveness":
-                // Full composed flows / liveness — next Phase 1/2 steps.
+                // Composed MRZ→NFC→liveness flow — arrives with Phase 2 (NFC).
                 callback.error(notImplemented(action));
                 return true;
             default:
                 return false;
         }
+    }
+
+    /** Launch the guided liveness capture, then verify server-side. */
+    private void checkLiveness(CallbackContext callback) {
+        if (api == null) {
+            callback.error(err("not_initialized", "Appelez initialize() avant la vérification."));
+            return;
+        }
+        pendingCallback = callback;
+        Intent intent = new Intent(cordova.getActivity(), LivenessActivity.class);
+        cordova.setActivityResultCallback(this);
+        cordova.getActivity().startActivityForResult(intent, REQ_LIVENESS);
     }
 
     /** Launch the guided MRZ scanner, then validate the lines server-side. */
@@ -76,16 +91,28 @@ public class CortixiaKycPlugin extends CordovaPlugin {
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if (requestCode != REQ_MRZ || pendingCallback == null) return;
+        if (pendingCallback == null) return;
         final CallbackContext callback = pendingCallback;
         pendingCallback = null;
+        boolean ok = resultCode == android.app.Activity.RESULT_OK && data != null;
+        String message = data != null ? data.getStringExtra("message") : null;
 
-        if (resultCode != android.app.Activity.RESULT_OK || data == null) {
-            String message = data != null ? data.getStringExtra("message") : null;
-            callback.error(err("cancelled",
-                    message != null ? message : "Lecture MRZ annulée."));
-            return;
+        if (requestCode == REQ_MRZ) {
+            if (!ok) {
+                callback.error(err("cancelled", message != null ? message : "Lecture MRZ annulée."));
+                return;
+            }
+            handleMrzResult(data, callback);
+        } else if (requestCode == REQ_LIVENESS) {
+            if (!ok) {
+                callback.error(err("cancelled", message != null ? message : "Vérification annulée."));
+                return;
+            }
+            handleLivenessResult(data, callback);
         }
+    }
+
+    private void handleMrzResult(Intent data, CallbackContext callback) {
         String[] lines = data.getStringArrayExtra(MrzScanActivity.EXTRA_LINES);
         if (lines == null || lines.length == 0) {
             callback.error(err("no_mrz", "Aucune MRZ détectée."));
@@ -94,16 +121,52 @@ public class CortixiaKycPlugin extends CordovaPlugin {
         final JSONArray lineArr = new JSONArray();
         for (String l : lines) lineArr.put(l);
         final String docType = pendingDocType;
-
-        // Validate server-side off the WebView thread.
         cordova.getThreadPool().execute(() -> {
             try {
-                JSONObject result = api.mrz(docType, lineArr, CortixiaApi.newSessionId());
-                callback.success(result);
+                callback.success(api.mrz(docType, lineArr, CortixiaApi.newSessionId()));
             } catch (CortixiaApi.CortixiaException e) {
                 callback.error(e.toJson());
             }
         });
+    }
+
+    private void handleLivenessResult(Intent data, CallbackContext callback) {
+        final String videoPath = data.getStringExtra(LivenessActivity.EXTRA_VIDEO_PATH);
+        final String facePath = data.getStringExtra(LivenessActivity.EXTRA_FACE_PATH);
+        cordova.getThreadPool().execute(() -> {
+            java.io.File video = videoPath != null ? new java.io.File(videoPath) : null;
+            java.io.File face = facePath != null ? new java.io.File(facePath) : null;
+            try {
+                byte[] faceBytes = readFile(face);
+                byte[] videoBytes = readFile(video);
+                if (faceBytes == null || videoBytes == null) {
+                    callback.error(err("capture_failed", "Capture incomplète. Réessayez."));
+                    return;
+                }
+                callback.success(api.liveness(faceBytes, videoBytes, CortixiaApi.newSessionId()));
+            } catch (CortixiaApi.CortixiaException e) {
+                callback.error(e.toJson());
+            } finally {
+                // Subject media is never kept on the device longer than the call.
+                if (video != null) video.delete();
+                if (face != null) face.delete();
+            }
+        });
+    }
+
+    private static byte[] readFile(java.io.File f) {
+        if (f == null || !f.exists()) return null;
+        try {
+            java.io.FileInputStream in = new java.io.FileInputStream(f);
+            java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+            byte[] chunk = new byte[8192];
+            int n;
+            while ((n = in.read(chunk)) > 0) out.write(chunk, 0, n);
+            in.close();
+            return out.toByteArray();
+        } catch (java.io.IOException e) {
+            return null;
+        }
     }
 
     private void ping(CallbackContext callback) throws JSONException {

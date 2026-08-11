@@ -50,6 +50,10 @@
                       android:theme="@style/Theme.AppCompat.NoActionBar"
                       android:screenOrientation="portrait"
                       android:exported="false" />
+            <activity android:name="dz.cortixia.kyc.LivenessActivity"
+                      android:theme="@style/Theme.AppCompat.NoActionBar"
+                      android:screenOrientation="portrait"
+                      android:exported="false" />
         </config-file>
 
         <source-file src="src/android/CortixiaKycPlugin.java"
@@ -59,6 +63,8 @@
         <source-file src="src/android/MrzDetector.java"
                      target-dir="app/src/main/java/dz/cortixia/kyc" />
         <source-file src="src/android/MrzScanActivity.java"
+                     target-dir="app/src/main/java/dz/cortixia/kyc" />
+        <source-file src="src/android/LivenessActivity.java"
                      target-dir="app/src/main/java/dz/cortixia/kyc" />
 
         <!-- minSdk 26 (NFC + the eMRTD stack). Applied via the framework gradle below. -->

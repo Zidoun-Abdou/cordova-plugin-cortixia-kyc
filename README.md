@@ -13,9 +13,16 @@ the raw datagroups to the Cortixia server for decoding. All other calls
 
 - **Phase 0 (done):** plugin packaging + JS↔native bridge proven on Android
   (`ping`). Java (not Kotlin — see below).
-- Phase 1: REST + guided MRZ + liveness (Android).
-- Phase 2: Android NFC (passport + ID card) via jMRTD.
+- **Phase 1 (done):** REST client + guided **MRZ** (`scanMrz`) + **liveness**
+  (`checkLiveness`) on Android. Device-verified on a Xiaomi against a live token —
+  both calls bill and appear on the portal dashboard. See
+  [`docs/INTEGRATION.md`](docs/INTEGRATION.md).
+- Phase 2: Android NFC (passport + ID card) via jMRTD — `scanIdCard` /
+  `scanPassport` composed flow.
 - Phase 3: iOS (Vision + NFCPassportReader + AVFoundation).
+
+**Integration guide:** [`docs/INTEGRATION.md`](docs/INTEGRATION.md) (install,
+OutSystems import, JS API, billing, troubleshooting).
 
 ## Build notes (learned the hard way)
 
