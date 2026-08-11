@@ -46,6 +46,8 @@
 
         <source-file src="src/android/CortixiaKycPlugin.java"
                      target-dir="app/src/main/java/dz/cortixia/kyc" />
+        <source-file src="src/android/CortixiaApi.java"
+                     target-dir="app/src/main/java/dz/cortixia/kyc" />
 
         <!-- minSdk 26 (NFC + the eMRTD stack). Applied via the framework gradle below. -->
         <framework src="src/android/cortixia-kyc.gradle" custom="true" type="gradleReference" />
