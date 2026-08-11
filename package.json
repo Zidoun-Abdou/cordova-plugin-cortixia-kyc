@@ -1,0 +1,29 @@
+{
+  "name": "cordova-plugin-cortixia-kyc",
+  "version": "0.1.0",
+  "description": "Algerian eKYC for Cordova/OutSystems: MRZ, NFC chip read and liveness, with guided native screens.",
+  "cordova": {
+    "id": "cordova-plugin-cortixia-kyc",
+    "platforms": [
+      "android",
+      "ios"
+    ]
+  },
+  "keywords": [
+    "ecosystem:cordova",
+    "cordova-android",
+    "cordova-ios",
+    "cortixia",
+    "kyc",
+    "nfc",
+    "mrz",
+    "liveness"
+  ],
+  "engines": [
+    {
+      "name": "cordova",
+      "version": ">=11.0.0"
+    }
+  ],
+  "license": "SEE LICENSE IN LICENSE"
+}

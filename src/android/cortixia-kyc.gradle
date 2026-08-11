@@ -1,0 +1,13 @@
+// Applied into the Cordova Android app build. Keeps the plugin's Android
+// requirements in one place so the host app (and OutSystems) needs no edits.
+android {
+    // NFC + the eMRTD stack need 26+.
+    defaultConfig {
+        minSdkVersion 26
+    }
+}
+
+dependencies {
+    // Phase 1: ML Kit text recognition (MRZ), CameraX (liveness).
+    // Phase 2: jMRTD + scuba (eMRTD BAC/SM), spongycastle.
+}

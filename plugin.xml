@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Cortixia KYC — Cordova plugin.
+
+  Brings the Cortixia identity-verification flow (MRZ scan → NFC chip read →
+  liveness) to Cordova apps, including OutSystems O11 Reactive, which imports
+  standard Cordova plugins. The plugin owns the guided scanning screens
+  natively (same UX as the Flutter SDK) and returns a single result object.
+
+  The chip cannot be read from JavaScript — the native layer does the eMRTD
+  BAC/secure-messaging read (jMRTD on Android, NFCPassportReader on iOS) and
+  posts the raw datagroups to the Cortixia server for decoding.
+-->
+<plugin xmlns="http://apache.org/cordova/ns/plugins/1.0"
+        id="cordova-plugin-cortixia-kyc"
+        version="0.1.0">
+
+    <name>Cortixia KYC</name>
+    <description>Algerian eKYC: MRZ, NFC chip read and liveness, with guided native screens.</description>
+    <license>Proprietary</license>
+    <keywords>cortixia,kyc,nfc,mrz,liveness,emrtd,outsystems</keywords>
+
+    <engines>
+        <engine name="cordova" version=">=11.0.0" />
+    </engines>
+
+    <!-- JS interface exposed to the Cordova/OutSystems app -->
+    <js-module src="www/cortixiaKyc.js" name="CortixiaKyc">
+        <clobbers target="cordova.plugins.cortixiaKyc" />
+    </js-module>
+
+    <!-- ============================ Android ============================ -->
+    <platform name="android">
+        <config-file target="res/xml/config.xml" parent="/*">
+            <feature name="CortixiaKyc">
+                <param name="android-package" value="dz.cortixia.kyc.CortixiaKycPlugin" />
+            </feature>
+        </config-file>
+
+        <config-file target="AndroidManifest.xml" parent="/manifest">
+            <uses-permission android:name="android.permission.INTERNET" />
+            <uses-permission android:name="android.permission.CAMERA" />
+            <uses-permission android:name="android.permission.NFC" />
+            <uses-feature android:name="android.hardware.nfc" android:required="false" />
+        </config-file>
+
+        <source-file src="src/android/CortixiaKycPlugin.java"
+                     target-dir="app/src/main/java/dz/cortixia/kyc" />
+
+        <!-- minSdk 26 (NFC + the eMRTD stack). Applied via the framework gradle below. -->
+        <framework src="src/android/cortixia-kyc.gradle" custom="true" type="gradleReference" />
+    </platform>
+
+    <!-- ============================== iOS ============================== -->
+    <platform name="ios">
+        <config-file target="config.xml" parent="/*">
+            <feature name="CortixiaKyc">
+                <param name="ios-package" value="CortixiaKycPlugin" />
+            </feature>
+        </config-file>
+
+        <config-file target="*-Info.plist" parent="NSCameraUsageDescription">
+            <string>La caméra est utilisée pour scanner votre document et vérifier votre identité.</string>
+        </config-file>
+        <config-file target="*-Info.plist" parent="NFCReaderUsageDescription">
+            <string>Le lecteur NFC lit la puce de votre document d'identité.</string>
+        </config-file>
+
+        <source-file src="src/ios/CortixiaKycPlugin.swift" />
+    </platform>
+</plugin>
