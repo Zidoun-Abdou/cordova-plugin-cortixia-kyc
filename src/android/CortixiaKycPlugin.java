@@ -38,6 +38,19 @@ public class CortixiaKycPlugin extends CordovaPlugin {
     private CallbackContext pendingCallback;
     private String pendingDocType;
 
+    // Composed scanIdCard/scanPassport state machine: MRZ → NFC → liveness.
+    // When composedFlow is true the step handlers advance to the next screen
+    // instead of resolving; the accumulated pieces become one KycResult.
+    private boolean composedFlow = false;
+    private JSONObject flowMrz;
+    private JSONObject flowDecoded;
+
+    private void resetFlow() {
+        composedFlow = false;
+        flowMrz = null;
+        flowDecoded = null;
+    }
+
     @Override
     public boolean execute(String action, JSONArray args, CallbackContext callback)
             throws JSONException {
@@ -58,13 +71,66 @@ public class CortixiaKycPlugin extends CordovaPlugin {
                 checkLiveness(callback);
                 return true;
             case "scanIdCard":
+                scanDocument("idcard", callback);
+                return true;
             case "scanPassport":
-                // Composed MRZ→NFC→liveness flow — arrives with Phase 2 (NFC).
-                callback.error(notImplemented(action));
+                scanDocument("passport", callback);
                 return true;
             default:
                 return false;
         }
+    }
+
+    /**
+     * Full guided flow: MRZ scan → NFC chip read → liveness → one KycResult.
+     * Each step's server call (mrz/decode/liveness) is billed as before; a
+     * cancel or failure at any step ends the flow with a typed French error.
+     */
+    private void scanDocument(String documentType, CallbackContext callback) {
+        if (api == null) {
+            callback.error(err("not_initialized", "Appelez initialize() avant de scanner."));
+            return;
+        }
+        resetFlow();
+        composedFlow = true;
+        launchMrz(documentType, callback);
+    }
+
+    // -- UI-thread activity launchers (used by the composed flow) ------------
+
+    private void launchMrz(String documentType, CallbackContext callback) {
+        cordova.getActivity().runOnUiThread(() -> {
+            pendingCallback = callback;
+            pendingDocType = documentType;
+            Intent intent = new Intent(cordova.getActivity(), MrzScanActivity.class);
+            intent.putExtra(MrzScanActivity.EXTRA_DOC_TYPE, documentType);
+            cordova.setActivityResultCallback(this);
+            cordova.getActivity().startActivityForResult(intent, REQ_MRZ);
+        });
+    }
+
+    private void launchNfc(String documentType, String docNumber, String dob, String doe,
+                           CallbackContext callback) {
+        cordova.getActivity().runOnUiThread(() -> {
+            pendingCallback = callback;
+            pendingDocType = documentType;
+            Intent intent = new Intent(cordova.getActivity(), NfcReadActivity.class);
+            intent.putExtra(NfcReadActivity.EXTRA_DOC_TYPE, documentType);
+            intent.putExtra(NfcReadActivity.EXTRA_DOC_NUMBER, docNumber);
+            intent.putExtra(NfcReadActivity.EXTRA_DOB, dob);
+            intent.putExtra(NfcReadActivity.EXTRA_DOE, doe);
+            cordova.setActivityResultCallback(this);
+            cordova.getActivity().startActivityForResult(intent, REQ_NFC);
+        });
+    }
+
+    private void launchLiveness(CallbackContext callback) {
+        cordova.getActivity().runOnUiThread(() -> {
+            pendingCallback = callback;
+            Intent intent = new Intent(cordova.getActivity(), LivenessActivity.class);
+            cordova.setActivityResultCallback(this);
+            cordova.getActivity().startActivityForResult(intent, REQ_LIVENESS);
+        });
     }
 
     /** Launch the guided liveness capture, then verify server-side. */
@@ -130,18 +196,21 @@ public class CortixiaKycPlugin extends CordovaPlugin {
 
         if (requestCode == REQ_MRZ) {
             if (!ok) {
+                resetFlow();
                 callback.error(err("cancelled", message != null ? message : "Lecture MRZ annulée."));
                 return;
             }
             handleMrzResult(data, callback);
         } else if (requestCode == REQ_LIVENESS) {
             if (!ok) {
+                resetFlow();
                 callback.error(err("cancelled", message != null ? message : "Vérification annulée."));
                 return;
             }
             handleLivenessResult(data, callback);
         } else if (requestCode == REQ_NFC) {
             if (!ok) {
+                resetFlow();
                 String code = data != null ? data.getStringExtra("code") : null;
                 callback.error(err(code != null ? code : "cancelled",
                         message != null ? message : "Lecture NFC annulée."));
@@ -157,6 +226,7 @@ public class CortixiaKycPlugin extends CordovaPlugin {
         final String dg11 = data.getStringExtra(NfcReadActivity.EXTRA_DG11_PATH);
         final String dg12 = data.getStringExtra(NfcReadActivity.EXTRA_DG12_PATH);
         final String docType = pendingDocType;
+        final boolean flow = composedFlow;
         cordova.getThreadPool().execute(() -> {
             java.util.List<java.io.File> temp = new java.util.ArrayList<>();
             try {
@@ -166,11 +236,20 @@ public class CortixiaKycPlugin extends CordovaPlugin {
                 putDg(dgs, temp, "dg11", dg11);
                 putDg(dgs, temp, "dg12", dg12);
                 if (dgs.isEmpty()) {
+                    if (flow) resetFlow();
                     callback.error(err("nfc_read_failed", "Aucune donnée lue sur la puce. Réessayez."));
                     return;
                 }
-                callback.success(api.decode(docType, dgs, CortixiaApi.newSessionId()));
+                JSONObject decoded = api.decode(docType, dgs, CortixiaApi.newSessionId());
+                if (!flow) {
+                    callback.success(decoded);
+                    return;
+                }
+                // Composed flow: carry the decoded identity forward to liveness.
+                flowDecoded = decoded;
+                launchLiveness(callback);
             } catch (CortixiaApi.CortixiaException e) {
+                if (flow) resetFlow();
                 callback.error(e.toJson());
             } finally {
                 // Raw chip datagroups never outlive the decode call on the device.
@@ -197,10 +276,29 @@ public class CortixiaKycPlugin extends CordovaPlugin {
         final JSONArray lineArr = new JSONArray();
         for (String l : lines) lineArr.put(l);
         final String docType = pendingDocType;
+        final boolean flow = composedFlow;
         cordova.getThreadPool().execute(() -> {
             try {
-                callback.success(api.mrz(docType, lineArr, CortixiaApi.newSessionId()));
+                JSONObject mrzResult = api.mrz(docType, lineArr, CortixiaApi.newSessionId());
+                if (!flow) {
+                    callback.success(mrzResult);
+                    return;
+                }
+                // Composed flow: carry the fields forward, use the BAC keys for NFC.
+                flowMrz = mrzResult;
+                JSONObject keys = mrzResult.optJSONObject("mrz_keys");
+                String docNumber = keys != null ? keys.optString("document_number", "") : "";
+                String dob = keys != null ? keys.optString("birth_date", "") : "";
+                String doe = keys != null ? keys.optString("expiry_date", "") : "";
+                if (docNumber.isEmpty() || dob.isEmpty() || doe.isEmpty()) {
+                    resetFlow();
+                    callback.error(err("invalid_mrz",
+                            "MRZ illisible pour la lecture de la puce. Réessayez."));
+                    return;
+                }
+                launchNfc(docType, docNumber, dob, doe, callback);
             } catch (CortixiaApi.CortixiaException e) {
+                resetFlow();
                 callback.error(e.toJson());
             }
         });
@@ -209,18 +307,30 @@ public class CortixiaKycPlugin extends CordovaPlugin {
     private void handleLivenessResult(Intent data, CallbackContext callback) {
         final String videoPath = data.getStringExtra(LivenessActivity.EXTRA_VIDEO_PATH);
         final String facePath = data.getStringExtra(LivenessActivity.EXTRA_FACE_PATH);
+        final boolean flow = composedFlow;
         cordova.getThreadPool().execute(() -> {
             java.io.File video = videoPath != null ? new java.io.File(videoPath) : null;
             java.io.File face = facePath != null ? new java.io.File(facePath) : null;
             try {
-                byte[] faceBytes = readFile(face);
+                // In the composed flow the reference face is the chip portrait
+                // (DG2) — the real identity check is "live selfie == chip photo".
+                // Standalone liveness uses the selfie's own frame (PAD demo).
+                byte[] faceBytes = flow ? chipPortraitBytes() : null;
+                if (faceBytes == null) faceBytes = readFile(face);
                 byte[] videoBytes = readFile(video);
                 if (faceBytes == null || videoBytes == null) {
+                    if (flow) resetFlow();
                     callback.error(err("capture_failed", "Capture incomplète. Réessayez."));
                     return;
                 }
-                callback.success(api.liveness(faceBytes, videoBytes, CortixiaApi.newSessionId()));
+                JSONObject liveness = api.liveness(faceBytes, videoBytes, CortixiaApi.newSessionId());
+                if (!flow) {
+                    callback.success(liveness);
+                    return;
+                }
+                callback.success(buildKycResult(liveness));
             } catch (CortixiaApi.CortixiaException e) {
+                if (flow) resetFlow();
                 callback.error(e.toJson());
             } finally {
                 // Subject media is never kept on the device longer than the call.
@@ -228,6 +338,37 @@ public class CortixiaKycPlugin extends CordovaPlugin {
                 if (face != null) face.delete();
             }
         });
+    }
+
+    /** The chip portrait (DG2) as JPEG bytes, from the decode response, or null. */
+    private byte[] chipPortraitBytes() {
+        try {
+            if (flowDecoded == null) return null;
+            JSONObject decoded = flowDecoded.optJSONObject("decoded");
+            JSONObject dg2 = decoded != null ? decoded.optJSONObject("dg2") : null;
+            String b64 = dg2 != null ? dg2.optString("face", "") : "";
+            if (b64.isEmpty()) return null;
+            return android.util.Base64.decode(b64, android.util.Base64.DEFAULT);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /** Assemble the composed-flow result and clear the state machine. */
+    private JSONObject buildKycResult(JSONObject liveness) {
+        JSONObject result = new JSONObject();
+        try {
+            result.put("status", "success");
+            result.put("document_type", pendingDocType);
+            // MRZ-parsed fields (surname, document_number, dates, …).
+            result.put("mrz", flowMrz != null ? flowMrz.opt("fields") : null);
+            // Server-decoded chip identity (portrait, DG11/DG12 fields).
+            result.put("decoded", flowDecoded);
+            // Liveness decision + FaceGuard block.
+            result.put("liveness", liveness);
+        } catch (JSONException ignored) { }
+        resetFlow();
+        return result;
     }
 
     private static byte[] readFile(java.io.File f) {

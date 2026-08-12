@@ -35,12 +35,15 @@ var cortixiaKyc = {
     return call('initialize', [config]);
   },
 
-  /** Full guided flow for the ID card: MRZ → NFC → liveness → result. */
+  /**
+   * Full guided flow for the ID card: MRZ → NFC chip → liveness → one result.
+   * @returns {Promise<{status, document_type, mrz, decoded, liveness}>}
+   */
   scanIdCard: function (options) {
     return call('scanIdCard', [options || {}]);
   },
 
-  /** Full guided flow for the passport. */
+  /** Full guided flow for the passport (MRZ → NFC → liveness → result). */
   scanPassport: function (options) {
     return call('scanPassport', [options || {}]);
   },
