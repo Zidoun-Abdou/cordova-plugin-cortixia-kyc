@@ -93,5 +93,14 @@
         </config-file>
 
         <source-file src="src/ios/CortixiaKycPlugin.swift" />
+        <source-file src="src/ios/CortixiaApi.swift" />
+        <source-file src="src/ios/MrzParser.swift" />
+        <source-file src="src/ios/MrzScanViewController.swift" />
+        <source-file src="src/ios/LivenessViewController.swift" />
+
+        <!-- Vision + AVFoundation are implicitly linked. CoreNFC (weak) is only
+             needed for the Phase 3b chip read; linking it now is harmless and
+             lets ping() report NFC availability. -->
+        <framework src="CoreNFC.framework" weak="true" />
     </platform>
 </plugin>
