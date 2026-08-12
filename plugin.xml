@@ -91,14 +91,29 @@
         <config-file target="*-Info.plist" parent="NFCReaderUsageDescription">
             <string>Le lecteur NFC lit la puce de votre document d'identité.</string>
         </config-file>
+        <!-- eMRTD applet the ISO7816 reader session may SELECT (ICAO 9303). -->
+        <config-file target="*-Info.plist" parent="com.apple.developer.nfc.readersession.iso7816.select-identifiers">
+            <array>
+                <string>A0000002471001</string>
+            </array>
+        </config-file>
+
+        <!-- NFC Tag Reading entitlement (requires a PAID team with the
+             capability enabled on the App ID — see docs/INTEGRATION.md). -->
+        <config-file target="Entitlements-Debug.plist" parent="com.apple.developer.nfc.readersession.formats">
+            <array><string>TAG</string></array>
+        </config-file>
+        <config-file target="Entitlements-Release.plist" parent="com.apple.developer.nfc.readersession.formats">
+            <array><string>TAG</string></array>
+        </config-file>
 
         <source-file src="src/ios/CortixiaKycPlugin.swift" />
         <source-file src="src/ios/CortixiaApi.swift" />
         <source-file src="src/ios/MrzParser.swift" />
         <source-file src="src/ios/MrzScanViewController.swift" />
         <source-file src="src/ios/LivenessViewController.swift" />
+        <source-file src="src/ios/EMRTDReader.swift" />
 
-        <!-- Vision + AVFoundation are implicitly linked. CoreNFC + the NFC
-             entitlement are added in Phase 3b (the chip read). -->
+        <framework src="CoreNFC.framework" />
     </platform>
 </plugin>
