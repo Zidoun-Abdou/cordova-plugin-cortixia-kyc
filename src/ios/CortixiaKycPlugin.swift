@@ -1,8 +1,5 @@
 import Foundation
 import AVFoundation
-#if canImport(CoreNFC)
-import CoreNFC
-#endif
 
 //
 // Cortixia KYC — iOS Cordova plugin entry point.
@@ -117,10 +114,9 @@ class CortixiaKycPlugin: CDVPlugin {
     // -- helpers -------------------------------------------------------------
 
     private func nfcAvailable() -> Bool {
-        // CoreNFC's availability symbol isn't present on the simulator SDK.
-        #if !targetEnvironment(simulator)
-        if #available(iOS 13.0, *) { return NFCReaderSessionAvailable() }
-        #endif
+        // Phase 3a ships MRZ + liveness only; real CoreNFC availability
+        // detection arrives with the Phase 3b chip read (which also adds the
+        // CoreNFC framework + NFC entitlement).
         return false
     }
 

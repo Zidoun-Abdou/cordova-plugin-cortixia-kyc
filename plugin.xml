@@ -98,9 +98,7 @@
         <source-file src="src/ios/MrzScanViewController.swift" />
         <source-file src="src/ios/LivenessViewController.swift" />
 
-        <!-- Vision + AVFoundation are implicitly linked. CoreNFC (weak) is only
-             needed for the Phase 3b chip read; linking it now is harmless and
-             lets ping() report NFC availability. -->
-        <framework src="CoreNFC.framework" weak="true" />
+        <!-- Vision + AVFoundation are implicitly linked. CoreNFC + the NFC
+             entitlement are added in Phase 3b (the chip read). -->
     </platform>
 </plugin>
