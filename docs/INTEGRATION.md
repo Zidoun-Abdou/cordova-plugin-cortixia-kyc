@@ -6,11 +6,12 @@
 owns the guided scanning screens natively, so the app calls one method and gets
 back a single result object, the same way the Flutter SDK works.
 
-> **Phase status.** Android **MRZ**, **NFC chip read** (jMRTD) and **liveness**
-> are live and device-verified, including the composed **`scanIdCard`** flow
-> (MRZ → chip → liveness → one result). **iOS** is Phase 3. This guide is
-> versioned with the plugin; sections marked _(Phase 3)_ describe the target
-> iOS API and are not callable there yet.
+> **Phase status.** **Android** (MRZ + NFC via jMRTD + liveness) and **iOS**
+> (MRZ via Vision + NFC via CoreNFC + liveness via AVFoundation) are both
+> implemented and device-verified, including the composed **`scanIdCard`** /
+> **`scanPassport`** flow (MRZ → chip → liveness → one result). The JS API is
+> identical on both platforms. iOS setup has extra signing requirements — see
+> **§8 iOS setup**.
 
 ---
 
@@ -258,8 +259,46 @@ Cancelled scans and `invalid_mrz` (bad check digits) are **free**; so is
 
 ---
 
-## 8. Roadmap
+## 8. iOS setup
 
-- **Phase 3 — iOS**: Vision MRZ, `NFCTagReaderSession` + NFCPassportReader,
-  AVFoundation liveness, matching native UX; delivered as code + guide (owner
-  tests on an iPhone with NFC + Apple signing).
+The JS API and result shape are identical to Android; iOS just needs a bit more
+signing setup because NFC is a restricted capability.
+
+- **Toolchain:** Xcode 15+, **cordova-ios 7+**, a real iPhone (the simulator has
+  no camera/NFC). Deployment target **iOS 13+**.
+- **Frameworks:** the plugin uses only system frameworks — **Vision** (MRZ OCR),
+  **AVFoundation** (liveness), **CoreNFC** (chip). No CocoaPods, no third-party
+  eMRTD library (the BAC + secure-messaging read is implemented in-plugin with
+  CommonCrypto).
+- **NFC requires a PAID Apple Developer account.** Free/Personal teams cannot use
+  the NFC entitlement. Sign the app with a paid team.
+- **Enable NFC on the App ID.** The plugin declares the
+  `com.apple.developer.nfc.readersession.formats = [TAG]` entitlement and the
+  eMRTD AID (`A0000002471001`) in `Info.plist`. With **automatic signing +
+  `-allowProvisioningUpdates`**, Xcode enables "NFC Tag Reading" on the App ID and
+  regenerates the profile for you. (If your account lacks permission to auto-enable
+  it, add it once in Xcode: target → **Signing & Capabilities → + Capability →
+  Near Field Communication Tag Reading**.)
+- **Build:**
+  ```bash
+  cordova platform add ios
+  cordova run ios --device --buildConfig=build.json   # build.json sets your paid developmentTeam
+  ```
+  Example `build.json`:
+  ```json
+  { "ios": { "debug":   { "codeSignIdentity": "Apple Development", "developmentTeam": "YOURTEAMID", "automaticProvisioning": true, "buildFlag": ["-allowProvisioningUpdates"] },
+             "release": { "codeSignIdentity": "Apple Development", "developmentTeam": "YOURTEAMID", "automaticProvisioning": true, "buildFlag": ["-allowProvisioningUpdates"] } } }
+  ```
+- **OutSystems (MABS):** set the app's signing to a paid team with NFC enabled;
+  MABS applies the plugin's entitlement + Info.plist keys automatically.
+- **iOS NFC UX:** iOS shows its own system "Ready to Scan" sheet; the user holds
+  the document to the **top** back edge of the iPhone (the NFC antenna sits at the
+  top, unlike Android's mid-back).
+
+**iOS troubleshooting**
+
+| Symptom | Cause / fix |
+|---|---|
+| `nfc_unavailable` on a device with NFC | The NFC entitlement isn't in the *signed* build. Confirm `codesign -d --entitlements :- YourApp.app` shows `com.apple.developer.nfc.readersession.formats`, and that NFC is enabled on the App ID. |
+| Signing fails: "No profiles / capability not available" | The team is free, or NFC isn't enabled on the App ID. Use a paid team and enable NFC Tag Reading. |
+| `bac_failed` | The MRZ was misread — redo the MRZ scan so the BAC keys are correct. |

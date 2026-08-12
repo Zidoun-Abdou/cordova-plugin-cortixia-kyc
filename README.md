@@ -20,13 +20,18 @@ the raw datagroups to the Cortixia server for decoding. All other calls
   with liveness matching the live face against the chip portrait. Device-verified
   on a Xiaomi with a real Algerian ID card; all three packs (`mrz`/`nfc`/
   `liveness`) bill on the portal. See [`docs/INTEGRATION.md`](docs/INTEGRATION.md).
-- Phase 3: iOS (Vision + NFCPassportReader + AVFoundation).
+- **Phase 3 (done):** **iOS** — MRZ (Vision), NFC eMRTD chip read (CoreNFC +
+  in-plugin BAC/secure-messaging, CommonCrypto — no third-party library), and
+  liveness (AVFoundation), with the same composed `scanIdCard`/`scanPassport`
+  flow. Device-verified on an iPhone with a real Algerian ID card + passport;
+  all three packs bill. iOS setup (paid team + NFC capability) is in
+  [`docs/INTEGRATION.md`](docs/INTEGRATION.md) §8.
 
-> Passport uses the same eMRTD path (`documentType: 'passport'`); untested
-> end-to-end only for lack of a passport on hand.
+Both platforms, both documents (Algerian ID card + passport), full MRZ + NFC +
+liveness pack — device-verified end to end.
 
 **Integration guide:** [`docs/INTEGRATION.md`](docs/INTEGRATION.md) (install,
-OutSystems import, JS API, billing, troubleshooting).
+OutSystems import, JS API, iOS setup, billing, troubleshooting).
 
 ## Build notes (learned the hard way)
 
