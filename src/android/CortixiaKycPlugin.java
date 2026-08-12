@@ -28,6 +28,7 @@ public class CortixiaKycPlugin extends CordovaPlugin {
 
     private static final int REQ_MRZ = 5001;
     private static final int REQ_LIVENESS = 5002;
+    private static final int REQ_NFC = 5003;
 
     private CortixiaApi api;
     private String apiToken;
@@ -49,6 +50,9 @@ public class CortixiaKycPlugin extends CordovaPlugin {
                 return true;
             case "scanMrz":
                 scanMrz(args.optString(0, "idcard"), callback);
+                return true;
+            case "readChip":
+                readChip(args.optJSONObject(0), callback);
                 return true;
             case "checkLiveness":
                 checkLiveness(callback);
@@ -73,6 +77,33 @@ public class CortixiaKycPlugin extends CordovaPlugin {
         Intent intent = new Intent(cordova.getActivity(), LivenessActivity.class);
         cordova.setActivityResultCallback(this);
         cordova.getActivity().startActivityForResult(intent, REQ_LIVENESS);
+    }
+
+    /** Launch the guided NFC read, then decode the datagroups server-side. */
+    private void readChip(JSONObject options, CallbackContext callback) {
+        if (api == null) {
+            callback.error(err("not_initialized", "Appelez initialize() avant la lecture NFC."));
+            return;
+        }
+        JSONObject keys = options != null ? options.optJSONObject("mrzKeys") : null;
+        String docNumber = keys != null ? keys.optString("document_number", "") : "";
+        String dob = keys != null ? keys.optString("birth_date", "") : "";
+        String doe = keys != null ? keys.optString("expiry_date", "") : "";
+        if (docNumber.isEmpty() || dob.isEmpty() || doe.isEmpty()) {
+            callback.error(err("bad_config",
+                    "readChip() nécessite mrzKeys (document_number, birth_date, expiry_date) issus de scanMrz()."));
+            return;
+        }
+        pendingCallback = callback;
+        pendingDocType = options.optString("documentType", "idcard");
+
+        Intent intent = new Intent(cordova.getActivity(), NfcReadActivity.class);
+        intent.putExtra(NfcReadActivity.EXTRA_DOC_TYPE, pendingDocType);
+        intent.putExtra(NfcReadActivity.EXTRA_DOC_NUMBER, docNumber);
+        intent.putExtra(NfcReadActivity.EXTRA_DOB, dob);
+        intent.putExtra(NfcReadActivity.EXTRA_DOE, doe);
+        cordova.setActivityResultCallback(this);
+        cordova.getActivity().startActivityForResult(intent, REQ_NFC);
     }
 
     /** Launch the guided MRZ scanner, then validate the lines server-side. */
@@ -109,7 +140,52 @@ public class CortixiaKycPlugin extends CordovaPlugin {
                 return;
             }
             handleLivenessResult(data, callback);
+        } else if (requestCode == REQ_NFC) {
+            if (!ok) {
+                String code = data != null ? data.getStringExtra("code") : null;
+                callback.error(err(code != null ? code : "cancelled",
+                        message != null ? message : "Lecture NFC annulée."));
+                return;
+            }
+            handleNfcResult(data, callback);
         }
+    }
+
+    private void handleNfcResult(Intent data, CallbackContext callback) {
+        final String dg2 = data.getStringExtra(NfcReadActivity.EXTRA_DG2_PATH);
+        final String dg7 = data.getStringExtra(NfcReadActivity.EXTRA_DG7_PATH);
+        final String dg11 = data.getStringExtra(NfcReadActivity.EXTRA_DG11_PATH);
+        final String dg12 = data.getStringExtra(NfcReadActivity.EXTRA_DG12_PATH);
+        final String docType = pendingDocType;
+        cordova.getThreadPool().execute(() -> {
+            java.util.List<java.io.File> temp = new java.util.ArrayList<>();
+            try {
+                java.util.Map<String, byte[]> dgs = new java.util.LinkedHashMap<>();
+                putDg(dgs, temp, "dg2", dg2);
+                putDg(dgs, temp, "dg7", dg7);
+                putDg(dgs, temp, "dg11", dg11);
+                putDg(dgs, temp, "dg12", dg12);
+                if (dgs.isEmpty()) {
+                    callback.error(err("nfc_read_failed", "Aucune donnée lue sur la puce. Réessayez."));
+                    return;
+                }
+                callback.success(api.decode(docType, dgs, CortixiaApi.newSessionId()));
+            } catch (CortixiaApi.CortixiaException e) {
+                callback.error(e.toJson());
+            } finally {
+                // Raw chip datagroups never outlive the decode call on the device.
+                for (java.io.File f : temp) f.delete();
+            }
+        });
+    }
+
+    private void putDg(java.util.Map<String, byte[]> dgs, java.util.List<java.io.File> temp,
+                       String key, String path) {
+        if (path == null) return;
+        java.io.File f = new java.io.File(path);
+        temp.add(f);
+        byte[] bytes = readFile(f);
+        if (bytes != null && bytes.length > 0) dgs.put(key, bytes);
     }
 
     private void handleMrzResult(Intent data, CallbackContext callback) {

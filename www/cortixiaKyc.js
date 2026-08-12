@@ -50,6 +50,16 @@ var cortixiaKyc = {
     return call('scanMrz', [documentType, options || {}]);
   },
 
+  /**
+   * NFC chip read only (the NFC pack). Reads the eMRTD chip using the BAC keys
+   * from a prior scanMrz() and returns the server-decoded identity.
+   * @param {{documentType: 'idcard'|'passport', mrzKeys: {document_number, birth_date, expiry_date}}} options
+   * @returns {Promise<object>} decoded identity map
+   */
+  readChip: function (options) {
+    return call('readChip', [options || {}]);
+  },
+
   /** Liveness only, against a reference face you supply (base64 JPEG). */
   checkLiveness: function (options) {
     return call('checkLiveness', [options || {}]);

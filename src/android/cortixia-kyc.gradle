@@ -10,6 +10,15 @@ android {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
+    // jMRTD's BouncyCastle jars (bcprov/bcutil) ship the same OSGI/module
+    // metadata, which the APK resource merger rejects as duplicates. These are
+    // build-time only — dropping them from the package is safe.
+    packagingOptions {
+        exclude 'META-INF/versions/9/OSGI-INF/MANIFEST.MF'
+        exclude 'META-INF/*.kotlin_module'
+        exclude 'META-INF/LICENSE*'
+        exclude 'META-INF/NOTICE*'
+    }
 }
 
 dependencies {
@@ -24,5 +33,17 @@ dependencies {
     implementation "androidx.camera:camera-lifecycle:$camerax"
     implementation "androidx.camera:camera-view:$camerax"
     implementation "androidx.camera:camera-video:$camerax"
-    // Phase 2: jMRTD + scuba (eMRTD BAC/SM), spongycastle.
+
+    // eMRTD chip read (BAC + secure messaging, DG2/DG7/DG11/DG12).
+    // jMRTD is LGPL (AAR/dynamic-link use is fine). scuba-sc-android is the
+    // Android-flavoured smartcard I/O layer; exclude jMRTD's desktop
+    // scuba-smartcards (pulls javax.smartcardio, absent on Android) so only the
+    // Android impl of net.sf.scuba.smartcards.* is on the classpath.
+    implementation("org.jmrtd:jmrtd:0.7.42") {
+        exclude group: "net.sf.scuba", module: "scuba-smartcards"
+    }
+    implementation "net.sf.scuba:scuba-sc-android:0.0.23"
+    // jMRTD 0.7.42 pulls bcprov-jdk18on transitively (its BAC/SM crypto). We
+    // register the full provider at runtime (NfcReadActivity), replacing
+    // Android's stripped "BC" stub, so DES/3DES for BAC is available.
 }
