@@ -32,8 +32,26 @@ final class LivenessViewController: UIViewController, AVCaptureFileOutputRecordi
         if !session.isRunning {
             DispatchQueue.global(qos: .userInitiated).async {
                 self.session.startRunning()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { self.startRecording() }
+                self.beginRecordingWhenReady()
             }
+        }
+    }
+
+    /// Start recording only once the video connection is active. In the composed
+    /// flow the front camera is spun up right after the MRZ camera + NFC session,
+    /// so a fixed delay isn't enough — recording would silently never start and
+    /// the screen would hang on "Enregistrement…". Poll readiness (up to ~5 s).
+    private func beginRecordingWhenReady(attempt: Int = 0) {
+        if finished { return }
+        let ready = session.isRunning && (movieOutput.connection(with: .video)?.isActive ?? false)
+        if ready {
+            DispatchQueue.main.async { self.startRecording() }
+        } else if attempt < 50 {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                self.beginRecordingWhenReady(attempt: attempt + 1)
+            }
+        } else {
+            fail()
         }
     }
 
@@ -117,6 +135,10 @@ final class LivenessViewController: UIViewController, AVCaptureFileOutputRecordi
         movieOutput.startRecording(to: url, recordingDelegate: self)
         DispatchQueue.main.asyncAfter(deadline: .now() + recordSeconds) {
             if self.movieOutput.isRecording { self.movieOutput.stopRecording() }
+        }
+        // Safety net: if the recording never finalizes, don't hang forever.
+        DispatchQueue.main.asyncAfter(deadline: .now() + recordSeconds + 4) {
+            if !self.finished { self.fail() }
         }
     }
 
