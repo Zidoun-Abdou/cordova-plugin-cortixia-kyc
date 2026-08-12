@@ -99,11 +99,13 @@
         </config-file>
 
         <!-- NFC Tag Reading entitlement (requires a PAID team with the
-             capability enabled on the App ID — see docs/INTEGRATION.md). -->
-        <config-file target="Entitlements-Debug.plist" parent="com.apple.developer.nfc.readersession.formats">
+             capability enabled on the App ID — see docs/INTEGRATION.md).
+             cordova-ios 7+ keeps these under the fixed "App" project dir; the
+             bare filename resolves to the wrong path and is silently ignored. -->
+        <config-file target="App/Entitlements-Debug.plist" parent="com.apple.developer.nfc.readersession.formats">
             <array><string>TAG</string></array>
         </config-file>
-        <config-file target="Entitlements-Release.plist" parent="com.apple.developer.nfc.readersession.formats">
+        <config-file target="App/Entitlements-Release.plist" parent="com.apple.developer.nfc.readersession.formats">
             <array><string>TAG</string></array>
         </config-file>
 
