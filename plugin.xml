@@ -12,6 +12,7 @@
   posts the raw datagroups to the Cortixia server for decoding.
 -->
 <plugin xmlns="http://apache.org/cordova/ns/plugins/1.0"
+        xmlns:android="http://schemas.android.com/apk/res/android"
         id="cordova-plugin-cortixia-kyc"
         version="0.1.0">
 
