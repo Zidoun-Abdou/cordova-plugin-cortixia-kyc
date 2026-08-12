@@ -137,7 +137,9 @@ final class EMRTDReader: NSObject, NFCTagReaderSessionDelegate {
         let kIfd = randomBytes(16)
         let s = rndIfd + rndIcc + kIfd
         let eIfd = des3CBC(s, key: kenc, iv: [UInt8](repeating: 0, count: 8), encrypt: true)
-        let mIfd = retailMAC(eIfd, key: kmac)
+        // ISO 9797-1 MAC alg 3 with padding method 2: always append 0x80 00…
+        // (E.IFD is already a multiple of 8, so this adds a full trailing block).
+        let mIfd = retailMAC(pad(eIfd), key: kmac)
         let cmdData = eIfd + mIfd
 
         let extAuth = NFCISO7816APDU(instructionClass: 0x00, instructionCode: 0x82,
