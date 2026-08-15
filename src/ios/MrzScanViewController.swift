@@ -95,7 +95,10 @@ final class MrzScanViewController: UIViewController, AVCaptureVideoDataOutputSam
     }
 
     private func configureSession() {
-        session.sessionPreset = .hd1280x720
+        // 1080p, not 720p: a passport TD3 line is 44 glyphs across — at 720p
+        // that's ~15 px/glyph and Vision never locks on (the 30-glyph TD1 line
+        // just squeaked by, which hid this until the first passport test).
+        session.sessionPreset = .hd1920x1080
         guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),
               let input = try? AVCaptureDeviceInput(device: device),
               session.canAddInput(input) else {
