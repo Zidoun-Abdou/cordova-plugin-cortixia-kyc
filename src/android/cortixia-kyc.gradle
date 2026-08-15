@@ -10,6 +10,20 @@ android {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
+    // The plugin's own keep rules (see cortixia-kyc-proguard.pro), installed
+    // by plugin.xml under app/src/main/. Appending to every build type is a
+    // no-op unless the host enables minification. AGP silently ignores a
+    // missing proguard file — which strips the reflectively-loaded plugin
+    // class and only fails at runtime — so a wrong path must fail the build.
+    def cortixiaRules = file('src/main/cortixia-kyc-proguard.pro')
+    if (!cortixiaRules.exists()) {
+        throw new GradleException(
+            'cortixia-kyc-proguard.pro not found at ' + cortixiaRules +
+            ' — run `cordova prepare android` (the plugin installs it).')
+    }
+    buildTypes.all {
+        proguardFiles cortixiaRules
+    }
     // jMRTD's BouncyCastle jars (bcprov/bcutil) ship the same OSGI/module
     // metadata, which the APK resource merger rejects as duplicates. These are
     // build-time only — dropping them from the package is safe.

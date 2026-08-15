@@ -14,7 +14,7 @@
 <plugin xmlns="http://apache.org/cordova/ns/plugins/1.0"
         xmlns:android="http://schemas.android.com/apk/res/android"
         id="cordova-plugin-cortixia-kyc"
-        version="0.1.1">
+        version="0.1.2">
 
     <name>Cortixia KYC</name>
     <description>Algerian eKYC: MRZ, NFC chip read and liveness, with guided native screens.</description>
@@ -73,6 +73,13 @@
                      target-dir="app/src/main/java/dz/cortixia/kyc" />
         <source-file src="src/android/NfcReadActivity.java"
                      target-dir="app/src/main/java/dz/cortixia/kyc" />
+
+        <!-- ProGuard/R8 rules the plugin needs — shipped with the plugin and
+             wired in by the framework gradle so minified client builds work
+             without any manual keep rules. -->
+        <!-- cordova-android resolves resource-file targets under app/src/main/. -->
+        <resource-file src="src/android/cortixia-kyc-proguard.pro"
+                       target="cortixia-kyc-proguard.pro" />
 
         <!-- minSdk 26 (NFC + the eMRTD stack). Applied via the framework gradle below. -->
         <framework src="src/android/cortixia-kyc.gradle" custom="true" type="gradleReference" />

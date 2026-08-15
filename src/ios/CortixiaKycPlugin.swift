@@ -12,7 +12,7 @@ import AVFoundation
 @objc(CortixiaKycPlugin)
 class CortixiaKycPlugin: CDVPlugin {
 
-    static let pluginVersion = "0.1.1"
+    static let pluginVersion = "0.1.2"
     private static let defaultBaseUrl = "https://www.e-kyc.online"
 
     private var api: CortixiaApi?

@@ -22,7 +22,7 @@ struct CortixiaError: Error {
 
 final class CortixiaApi {
 
-    static let sdkVersion = "cordova-ios-0.1.1"
+    static let sdkVersion = "cordova-ios-0.1.2"
 
     private let baseUrl: String
     private let apiToken: String

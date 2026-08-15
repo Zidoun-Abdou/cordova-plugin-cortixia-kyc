@@ -35,7 +35,7 @@ class CortixiaApi {
     private final String baseUrl;
     private final String apiToken;
 
-    static final String SDK_VERSION = "cordova-0.1.1";
+    static final String SDK_VERSION = "cordova-0.1.2";
 
     CortixiaApi(String baseUrl, String apiToken) {
         // Trim a trailing slash so path concatenation is predictable.

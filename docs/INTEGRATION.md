@@ -228,16 +228,11 @@ Cancelled scans and `invalid_mrz` (bad check digits) are **free**; so is
 - It registers the full **BouncyCastle** provider at runtime (replacing
   Android's stripped `BC` stub) so 3DES for BAC is available. Safe on API 26+
   (TLS uses Conscrypt).
-- **Release builds (R8/ProGuard):** keep jMRTD, SCUBA and BouncyCastle. Add:
-  ```proguard
-  -keep class org.jmrtd.** { *; }
-  -keep class net.sf.scuba.** { *; }
-  -keep class org.bouncycastle.** { *; }
-  -dontwarn org.jmrtd.**
-  -dontwarn net.sf.scuba.**
-  -dontwarn org.bouncycastle.**
-  -dontwarn javax.smartcardio.**
-  ```
+- **Release builds (R8/ProGuard): automatic since v0.1.2.** The plugin ships
+  `cortixia-kyc-proguard.pro` and wires it into every build type itself — no
+  manual keep rules. (It keeps `dz.cortixia.kyc.**` — the plugin class is
+  loaded reflectively from config.xml, so without it R8 strips it and the
+  build only fails at runtime — plus jMRTD/SCUBA/BouncyCastle.)
 - **Licence:** jMRTD is **LGPL-3.0** (used as an unmodified AAR / dynamic link —
   compatible with a closed-source host app). SCUBA is LGPL likewise;
   BouncyCastle is MIT-style. No source-disclosure obligation for the host app.

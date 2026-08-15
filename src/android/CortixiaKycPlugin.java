@@ -23,7 +23,7 @@ import org.json.JSONObject;
  */
 public class CortixiaKycPlugin extends CordovaPlugin {
 
-    public static final String PLUGIN_VERSION = "0.1.1";
+    public static final String PLUGIN_VERSION = "0.1.2";
     private static final String DEFAULT_BASE_URL = "https://www.e-kyc.online";
 
     private static final int REQ_MRZ = 5001;
