@@ -1,0 +1,449 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cortixia KYC — Guide d'intégration OutSystems</title>
+<style>
+  :root {
+    --navy: #1E3A5F;
+    --teal: #0D9488;
+    --teal-soft: #E6F4F2;
+    --bg: #FFFFFF;
+    --surface: #F9FAFB;
+    --ink: #111827;
+    --body: #374151;
+    --muted: #6B7280;
+    --border: #E5E7EB;
+    --code-bg: #10202f;
+    --code-ink: #E5EAF0;
+    --code-accent: #7DD3C8;
+    --warn-bg: #FEF6E7;
+    --warn-border: #F0D9A8;
+    --warn-ink: #7A5A1E;
+    --ok: #059669;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --navy: #A8C3E8;
+      --teal: #34C4B5;
+      --teal-soft: #10302D;
+      --bg: #0E1620;
+      --surface: #16202C;
+      --ink: #EDF1F6;
+      --body: #C3CCD8;
+      --muted: #8B97A6;
+      --border: #263242;
+      --code-bg: #0A121B;
+      --code-ink: #DCE4EC;
+      --code-accent: #6FD4C6;
+      --warn-bg: #2A2210;
+      --warn-border: #4A3B18;
+      --warn-ink: #E4C778;
+      --ok: #34C486;
+    }
+  }
+  :root[data-theme="dark"] {
+    --navy: #A8C3E8; --teal: #34C4B5; --teal-soft: #10302D;
+    --bg: #0E1620; --surface: #16202C; --ink: #EDF1F6; --body: #C3CCD8;
+    --muted: #8B97A6; --border: #263242; --code-bg: #0A121B;
+    --code-ink: #DCE4EC; --code-accent: #6FD4C6;
+    --warn-bg: #2A2210; --warn-border: #4A3B18; --warn-ink: #E4C778; --ok: #34C486;
+  }
+  :root[data-theme="light"] {
+    --navy: #1E3A5F; --teal: #0D9488; --teal-soft: #E6F4F2;
+    --bg: #FFFFFF; --surface: #F9FAFB; --ink: #111827; --body: #374151;
+    --muted: #6B7280; --border: #E5E7EB; --code-bg: #10202f;
+    --code-ink: #E5EAF0; --code-accent: #7DD3C8;
+    --warn-bg: #FEF6E7; --warn-border: #F0D9A8; --warn-ink: #7A5A1E; --ok: #059669;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--body);
+    font: 16px/1.65 -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  code, pre, .mono {
+    font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  }
+
+  .wrap { max-width: 760px; margin: 0 auto; padding: 0 22px; }
+
+  /* ---------- header ---------- */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 40px 0 34px;
+    background: var(--surface);
+  }
+  .brand {
+    display: flex; align-items: center; gap: 10px;
+    font-weight: 600; color: var(--navy); font-size: 15px;
+    letter-spacing: .01em;
+  }
+  .brand .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--teal); }
+  h1 {
+    margin: 14px 0 8px;
+    font-size: clamp(26px, 4.5vw, 34px);
+    line-height: 1.2;
+    color: var(--ink);
+    font-weight: 700;
+    letter-spacing: -.015em;
+    text-wrap: balance;
+  }
+  .sub { color: var(--muted); margin: 0; max-width: 58ch; }
+  .meta {
+    display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px;
+  }
+  .chip {
+    font-size: 12.5px; padding: 4px 12px; border-radius: 999px;
+    border: 1px solid var(--border); color: var(--body); background: var(--bg);
+  }
+  .chip.teal { background: var(--teal-soft); border-color: transparent; color: var(--teal); font-weight: 600; }
+
+  /* ---------- flow strip ---------- */
+  .flow {
+    display: flex; align-items: stretch; gap: 0;
+    margin: 30px 0 4px; border: 1px solid var(--border);
+    border-radius: 12px; overflow: hidden; background: var(--bg);
+  }
+  .flow > div {
+    flex: 1; padding: 14px 12px 12px; text-align: center; position: relative;
+  }
+  .flow > div + div { border-left: 1px solid var(--border); }
+  .flow b { display: block; color: var(--ink); font-size: 14.5px; }
+  .flow span { font-size: 12.5px; color: var(--muted); }
+  .flow .cr { display: block; margin-top: 6px; font-size: 11.5px; color: var(--teal); font-weight: 600; }
+
+  /* ---------- sections / steps ---------- */
+  main { padding: 10px 0 60px; }
+  section { padding: 34px 0 6px; }
+  section + section { border-top: 1px solid var(--border); margin-top: 30px; }
+  h2 {
+    display: flex; align-items: center; gap: 12px;
+    font-size: 21px; color: var(--ink); font-weight: 700;
+    margin: 0 0 6px; letter-spacing: -.01em; text-wrap: balance;
+  }
+  .stepnum {
+    flex: none; width: 30px; height: 30px; border-radius: 50%;
+    background: var(--navy); color: var(--bg);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 600;
+  }
+  :root[data-theme="dark"] .stepnum, .dark-num { color: #0E1620; }
+  @media (prefers-color-scheme: dark) { .stepnum { color: #0E1620; } }
+  :root[data-theme="light"] .stepnum { color: #FFFFFF; }
+  h3 { font-size: 16px; color: var(--ink); margin: 22px 0 6px; }
+  p { margin: 10px 0; }
+  .lead { color: var(--muted); margin-top: 2px; }
+  li { margin: 5px 0; }
+  a { color: var(--teal); }
+
+  /* ---------- code ---------- */
+  .codecard {
+    border-radius: 10px; overflow: hidden; margin: 14px 0;
+    border: 1px solid var(--border);
+  }
+  .codecard .bar {
+    display: flex; justify-content: space-between; align-items: center;
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 7px 14px; font-size: 12.5px; color: var(--muted);
+  }
+  .codecard .bar .mono { font-size: 12px; }
+  .codecard button {
+    font: 12px/1 inherit; font-family: inherit;
+    border: 1px solid var(--border); background: var(--bg); color: var(--body);
+    border-radius: 6px; padding: 4px 10px; cursor: pointer;
+  }
+  .codecard button:hover { border-color: var(--teal); color: var(--teal); }
+  .codecard button:focus-visible { outline: 2px solid var(--teal); outline-offset: 1px; }
+  pre {
+    margin: 0; padding: 15px 16px; background: var(--code-bg); color: var(--code-ink);
+    font-size: 13px; line-height: 1.6; overflow-x: auto;
+  }
+  pre .c { color: #8fa3b8; }        /* comment */
+  pre .k { color: var(--code-accent); } /* keyword-ish highlight */
+  p code, li code, td code {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 5px; padding: 1px 6px; font-size: 13px; color: var(--ink);
+  }
+
+  /* ---------- callouts ---------- */
+  .note, .warn {
+    border-radius: 10px; padding: 13px 16px; margin: 16px 0; font-size: 14.5px;
+  }
+  .note { background: var(--teal-soft); color: var(--ink); }
+  .note b { color: var(--teal); }
+  .warn { background: var(--warn-bg); border: 1px solid var(--warn-border); color: var(--warn-ink); }
+  .warn b { color: inherit; }
+
+  /* ---------- checklist ---------- */
+  .check { list-style: none; padding: 0; margin: 14px 0; }
+  .check li {
+    padding: 9px 0 9px 30px; position: relative; border-bottom: 1px dashed var(--border);
+  }
+  .check li:last-child { border-bottom: 0; }
+  .check li::before {
+    content: "✓"; position: absolute; left: 2px; top: 8px;
+    color: var(--ok); font-weight: 700;
+  }
+
+  /* ---------- tables ---------- */
+  .tbl { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; margin: 14px 0; }
+  table { border-collapse: collapse; width: 100%; min-width: 520px; font-size: 14px; }
+  th {
+    text-align: left; font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--muted); font-weight: 600; padding: 10px 14px;
+    border-bottom: 1px solid var(--border); background: var(--surface);
+  }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:last-child td { border-bottom: 0; }
+  td.mono { font-size: 12.5px; color: var(--teal); white-space: nowrap; }
+
+  /* ---------- footer ---------- */
+  footer {
+    border-top: 1px solid var(--border); background: var(--surface);
+    padding: 26px 0 34px; font-size: 14px; color: var(--muted);
+  }
+  footer .wrap { display: flex; flex-wrap: wrap; gap: 6px 26px; justify-content: space-between; }
+</style>
+
+<header>
+  <div class="wrap">
+    <div class="brand"><span class="dot"></span> Cortixia KYC</div>
+    <h1>Intégrer la vérification d'identité dans votre application OutSystems</h1>
+    <p class="sub">Carte d'identité biométrique et passeport algériens — MRZ, lecture de la puce NFC et
+    vérification du visage, dans votre application existante. Votre équipe appelle une méthode,
+    elle reçoit l'identité vérifiée.</p>
+    <div class="meta">
+      <span class="chip teal">Pack complet · MRZ + NFC + Liveness</span>
+      <span class="chip">OutSystems O11</span>
+      <span class="chip">Android &amp; iOS</span>
+      <span class="chip mono">plugin v0.1.3</span>
+    </div>
+
+    <div class="flow" aria-label="Parcours de vérification">
+      <div><b>1 · MRZ</b><span>La caméra lit le document</span><span class="cr">1 crédit</span></div>
+      <div><b>2 · NFC</b><span>La puce livre l'identité signée</span><span class="cr">1 crédit</span></div>
+      <div><b>3 · Visage</b><span>Selfie comparé à la photo de la puce</span><span class="cr">1 crédit</span></div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+
+    <section id="prerequis">
+      <h2><span class="stepnum">0</span> Avant de commencer</h2>
+      <p class="lead">Quatre choses à réunir — tout le reste est automatique.</p>
+      <ul class="check">
+        <li>Votre <b>jeton API</b> (format <code>ck_live_…</code>), visible sur votre
+            <a href="https://www.e-kyc.online/portal/">tableau de bord Cortixia</a>. Il porte vos packs et votre quota.</li>
+        <li>Un <b>appareil réel</b> pour tester : caméra + NFC (l'émulateur ne convient pas).</li>
+        <li>Pour iOS : un <b>compte développeur Apple payant</b> — Apple réserve le NFC aux équipes payantes.</li>
+        <li>Service Studio avec accès aux <b>Extensibility Configurations</b> de votre application mobile.</li>
+      </ul>
+      <div class="note"><b>Vos écrans restent les vôtres.</b> Le plugin n'affiche que les trois écrans de
+      capture (cadre MRZ, attente NFC, ovale du visage). Tout le reste — parcours, résultats, marque —
+      se construit normalement dans OutSystems.</div>
+    </section>
+
+    <section id="import">
+      <h2><span class="stepnum">1</span> Importer le plugin</h2>
+      <p>Dans Service Studio : votre application mobile → module → <b>Extensibility Configurations</b> →
+      collez ce JSON, puis <b>publiez</b>.</p>
+      <div class="codecard">
+        <div class="bar"><span>Extensibility Configurations</span><button type="button" data-copy>Copier</button></div>
+        <pre>{
+  "plugin": {
+    "url": "https://github.com/Zidoun-Abdou/cordova-plugin-cortixia-kyc.git"
+  }
+}</pre>
+      </div>
+      <p>À la publication, MABS reconstruit l'application : le plugin déclare lui-même les permissions
+      (caméra, NFC, internet), ses écrans natifs et ses dépendances. <b>Aucune configuration MABS
+      supplémentaire n'est nécessaire</b> — y compris pour les builds minifiés (règles ProGuard incluses).</p>
+      <p>L'API est disponible côté client sous <code>cordova.plugins.cortixiaKyc</code> dès l'événement
+      <code>deviceready</code>.</p>
+    </section>
+
+    <section id="init">
+      <h2><span class="stepnum">2</span> Initialiser au démarrage</h2>
+      <p>Une seule fois, au lancement de l'application — par exemple dans le
+      <code>OnApplicationReady</code>, via un nœud <b>JavaScript</b> :</p>
+      <div class="codecard">
+        <div class="bar"><span class="mono">Nœud JavaScript — initialisation</span><button type="button" data-copy>Copier</button></div>
+        <pre><span class="c">// $parameters.ApiToken : votre jeton, idéalement depuis une Site Property</span>
+var kyc = cordova.plugins.cortixiaKyc;
+
+kyc.initialize({ apiToken: $parameters.ApiToken })
+  .then(function (licence) {
+    <span class="c">// licence.quota = { limit, used, remaining }</span>
+    $parameters.CreditsRestants = licence.quota.remaining;
+    $resolve();
+  })
+  .catch(function (e) {
+    <span class="c">// e.message est en français, prêt à afficher</span>
+    $parameters.Erreur = e.message;
+    $resolve();
+  });</pre>
+      </div>
+      <div class="warn"><b>Le jeton n'est pas un secret d'État, mais gérez-le proprement :</b>
+      stockez-le dans une Site Property plutôt qu'en dur, et sachez qu'il se régénère en un clic
+      depuis votre tableau de bord — l'ancien est révoqué immédiatement.</div>
+    </section>
+
+    <section id="scan">
+      <h2><span class="stepnum">3</span> Lancer une vérification</h2>
+      <p>Depuis n'importe quelle action cliente — un bouton « Vérifier mon identité » — un seul appel
+      enchaîne les trois écrans et rend un seul résultat :</p>
+      <div class="codecard">
+        <div class="bar"><span class="mono">Nœud JavaScript — vérification complète</span><button type="button" data-copy>Copier</button></div>
+        <pre>var kyc = cordova.plugins.cortixiaKyc;
+
+<span class="c">// Carte d'identité : scanIdCard() · Passeport : scanPassport()</span>
+kyc.scanIdCard()
+  .then(function (r) {
+    if (r.status === 'success' &amp;&amp; r.liveness.decision === 'True') {
+      <span class="c">// Identité vérifiée — mappez vers vos variables locales :</span>
+      $parameters.Nom        = r.mrz.surname;
+      $parameters.Prenoms    = r.mrz.given_names;
+      $parameters.NumeroDoc  = r.mrz.document_number;
+      $parameters.PhotoPuce  = r.decoded.decoded.dg2.face; <span class="c">// JPEG base64</span>
+      $parameters.Verifie    = true;
+    } else {
+      $parameters.Verifie = false;
+    }
+    $resolve();
+  })
+  .catch(function (e) {
+    <span class="c">// L'utilisateur a annulé, ou une étape a échoué — e.code + e.message</span>
+    $parameters.Erreur = e.message;
+    $parameters.Verifie = false;
+    $resolve();
+  });</pre>
+      </div>
+
+      <h3>Ce que contient le résultat</h3>
+      <div class="codecard">
+        <div class="bar"><span class="mono">Structure du résultat (succès)</span><button type="button" data-copy>Copier</button></div>
+        <pre>{
+  "status": "success",
+  "document_type": "idcard",              <span class="c">// ou "passport"</span>
+  "mrz": {
+    "surname": "…", "given_names": "…",
+    "document_number": "…",
+    "birth_date": "…", "expiry_date": "…"
+  },
+  "decoded": {
+    "decoded": {
+      "dg2":  { "face": "&lt;JPEG base64&gt;" }, <span class="c">// photo officielle de la puce</span>
+      "dg11": { … }, "dg12": { … }          <span class="c">// champs d'identité décodés</span>
+    }
+  },
+  "liveness": {
+    "decision": "True",                     <span class="c">// chaîne : "True" | "False"</span>
+    "details": { "spoof_ratio": 0 }
+  }
+}</pre>
+      </div>
+      <p>Dans OutSystems, définissez une <b>Structure</b> reflétant ces champs et mappez la sortie du
+      nœud JavaScript dessus. Le visage vérifié est comparé à la <b>photo de la puce</b> — pas à une
+      photo fournie par l'utilisateur.</p>
+      <div class="note"><b>Facturation :</b> une vérification complète consomme <b>3 crédits</b>
+      (1 par étape). Une MRZ illisible, un scan annulé : <b>0 crédit</b>. Le compteur est visible en
+      temps réel sur votre tableau de bord.</div>
+    </section>
+
+    <section id="ios">
+      <h2><span class="stepnum">4</span> iOS : la signature (une seule fois)</h2>
+      <p class="lead">La seule étape manuelle de toute l'intégration — Apple exige qu'elle soit faite
+      par le titulaire du compte.</p>
+      <p>MABS signe vos builds iOS avec le profil que vous téléversez dans OutSystems. Pour que le NFC
+      fonctionne, ce profil doit porter la capacité « NFC Tag Reading » :</p>
+      <ol>
+        <li>Sur <a href="https://developer.apple.com/account/resources/identifiers/list">developer.apple.com</a> →
+            <b>Identifiers</b> → votre App ID → cochez <b>Near Field Communication Tag Reading</b> → Save.</li>
+        <li>Toujours sur le portail Apple : <b>régénérez le profil de provisionnement</b> de l'application
+            (il embarque désormais la capacité NFC) et téléchargez-le.</li>
+        <li>Dans OutSystems (Service Center / configuration iOS de l'app) : <b>téléversez le nouveau
+            profil</b> + votre certificat, puis republiez.</li>
+      </ol>
+      <p>Le plugin déclare le reste lui-même : l'entitlement NFC, l'identifiant de la puce des documents
+      (<code>A0000002471001</code>) et les textes d'autorisation caméra/NFC.</p>
+      <div class="warn"><b>Rappel matériel :</b> l'antenne NFC de l'iPhone est sur le bord
+      <b>supérieur</b> du dos — le document se tient en haut de l'appareil. Sur Android, elle est au
+      centre. iOS affiche sa propre feuille système « Ready to Scan » pendant la lecture.</div>
+    </section>
+
+    <section id="test">
+      <h2><span class="stepnum">5</span> Tester</h2>
+      <ul class="check">
+        <li>Générez l'application depuis Service Studio et installez-la sur un <b>appareil réel</b>.</li>
+        <li>Au lancement : l'initialisation doit remonter vos crédits restants.</li>
+        <li>Lancez une vérification avec une vraie carte ou un vrai passeport : cadre MRZ →
+            document contre le dos du téléphone → visage dans l'ovale.</li>
+        <li>Vérifiez sur votre <a href="https://www.e-kyc.online/portal/">tableau de bord</a> :
+            le compteur descend de 3 crédits par parcours réussi.</li>
+      </ul>
+    </section>
+
+    <section id="erreurs">
+      <h2><span class="stepnum dark-num">✕</span> Si quelque chose refuse</h2>
+      <p class="lead">Chaque refus porte un code stable et un message en français, prêt à afficher
+      tel quel à l'utilisateur final. Jamais de code HTTP brut.</p>
+      <div class="tbl">
+        <table>
+          <thead><tr><th>Code</th><th>Signification</th><th>Que faire</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">cancelled</td><td>L'utilisateur a quitté un écran.</td><td>Rien — proposez de recommencer.</td></tr>
+            <tr><td class="mono">bac_failed</td><td>La puce a refusé l'authentification.</td><td>La MRZ a été mal lue : refaire le scan.</td></tr>
+            <tr><td class="mono">nfc_read_failed</td><td>Lecture de la puce interrompue.</td><td>Repositionner le document, réessayer.</td></tr>
+            <tr><td class="mono">nfc_disabled</td><td>NFC désactivé dans les réglages.</td><td>Guider vers les réglages (Android).</td></tr>
+            <tr><td class="mono">capture_failed</td><td>Vidéo du visage incomplète.</td><td>Réessayer.</td></tr>
+            <tr><td class="mono">invalid_mrz</td><td>Chiffres de contrôle faux.</td><td>Refaire le scan — non facturé.</td></tr>
+            <tr><td class="mono">quota_exceeded</td><td>Crédits épuisés pour la période.</td><td>Recharger depuis le tableau de bord.</td></tr>
+            <tr><td class="mono">invalid_token</td><td>Jeton inconnu ou révoqué.</td><td>Vérifier la Site Property du jeton.</td></tr>
+            <tr><td class="mono">liveness_unavailable</td><td>Service momentanément indisponible.</td><td>Réessayer — non facturé.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="faq">
+      <h2><span class="stepnum dark-num">?</span> Questions fréquentes</h2>
+      <h3>Où vont les données de mes utilisateurs ?</h3>
+      <p>Les données de la puce sont décodées en mémoire côté serveur et renvoyées à votre application.
+      <b>Cortixia ne stocke aucune donnée d'identité.</b></p>
+      <h3>Peut-on n'utiliser qu'une partie du parcours ?</h3>
+      <p>Oui — <code>scanMrz()</code>, <code>readChip()</code> et <code>checkLiveness()</code>
+      s'appellent aussi séparément (1 crédit chacun), si votre système possède déjà une partie du parcours.</p>
+      <h3>Peut-on adapter l'apparence des écrans de capture ?</h3>
+      <p>Les écrans autour de la capture sont déjà 100&nbsp;% les vôtres. Pour les trois écrans de
+      capture eux-mêmes (couleurs, textes, logo), une personnalisation à votre marque est possible —
+      parlez-en avec nous.</p>
+      <h3>La documentation technique complète ?</h3>
+      <p>Sur <a href="https://www.e-kyc.online/docs/cordova/">e-kyc.online/docs/cordova/</a> — et une
+      version pré-remplie avec votre jeton réel dans votre espace client.</p>
+    </section>
+
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span><b style="color:var(--navy)">Cortixia KYC</b> — vérification d'identité algérienne</span>
+    <span>Support : <a href="https://www.e-kyc.online/contact/">e-kyc.online/contact</a></span>
+  </div>
+</footer>
+
+<script>
+  document.querySelectorAll('[data-copy]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var pre = btn.closest('.codecard').querySelector('pre');
+      navigator.clipboard.writeText(pre.textContent).then(function () {
+        var old = btn.textContent;
+        btn.textContent = 'Copié ✓';
+        setTimeout(function () { btn.textContent = old; }, 1600);
+      });
+    });
+  });
+</script>
